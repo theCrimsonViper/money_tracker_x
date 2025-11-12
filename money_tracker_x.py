@@ -15,4 +15,4 @@ import uuid
 import json
 import csv
 
-DATE_FILE = Path.home() / "expenses_ledger"
+DATE_FILE = Path.home() / "expenses_ledger.json"
