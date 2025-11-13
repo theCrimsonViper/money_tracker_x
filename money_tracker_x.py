@@ -51,8 +51,31 @@ def parse_date(date) -> str:
         except:
             continue
 
+    # error if the program doesn't recognize the input date format
     raise ValueError ("Unrecognized date format. Samples of date format: YYYY/MM/DD or MM-DD-YYYY, etc.")
 
+
+# saving the new data when either adding an expense or editing an expense
+def save_data(data):
+    
+    # this will set it up as a JSON object for saving it as a .json file
+    raw_data = {}
+
+    try:
+        # each date is a key, and it's value will be an array of possible items
+        # entered on that specific date ## see "sample_expenses_ledger.json"
+        for date_key, item_entry in data.items():
+            raw_data[date_key] = []
+            for copy in item_entry:
+                item_entry_copy = dict(copy)
+                raw_data[date_key].append(item_entry_copy)
+                print("Log: save succesful")
+
+    except TypeError as ex:
+        print ("Error saving data:", ex)
+        return
+
+    LEDGER_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf_8")
 
 
 
@@ -65,4 +88,3 @@ def show_commands():
           "\n'show m' - show month total"
           "\n'show d' - show day total"
     )
-
