@@ -61,6 +61,8 @@ def save_data(data):
     # this will set it up as a JSON object for saving it as a .json file
     raw_data = {}
 
+    # let's attempt to encode the pairing of the date
+    # with it's corresponding entry in the JSON
     try:
         # each date is a key, and it's value will be an array of possible items
         # entered on that specific date ## see "sample_expenses_ledger.json"
@@ -71,11 +73,46 @@ def save_data(data):
                 raw_data[date_key].append(item_entry_copy)
                 print("Log: save succesful")
 
+    # there might be a type error with the "for copy in item_entry" loop
     except TypeError as ex:
         print ("Error saving data:", ex)
         return
 
+    # time to write everything into the JSON file
     LEDGER_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf_8")
+
+
+# loads the saved data from the directory chosen by the "LEDGER_FILE" variable
+def load_data():
+
+    # just incase this is the first time you're using this program
+    # this will generate the file initially
+    if not LEDGER_FILE.exists():
+        raw_data = {}
+        LEDGER_FILE.write_text(json.dumps(raw_data, ensure_ascii=False, indent=2), encoding="utf_8")
+
+    # let's attempt to decode the JSON file into Python
+    try:
+        raw_data = json.loads(LEDGER_FILE.read_text(encoding="utf_8"))
+        decoded_data = {}
+
+        # each date is a key, and it's value will be an array of possible items
+        # entered on that specific date ## see "sample_expenses_ledger.json"
+        for date_key, item_entry in raw_data.items():
+            decoded_data[date_key] = []
+            for copy in item_entry:
+                item_entry_copy = dict(copy)
+                decoded_data.append(item_entry_copy)
+                print("Log: load succesful")
+
+    # returning the newly decoded data into Python objects
+        return decoded_data
+    
+    # just in case any kind of error occurs (such as corruption of the file)
+    # this function will return an empty Python dictionary
+    except Exception:
+        print("Unable to load file. Trying again.")
+        return {}
 
 
 
