@@ -35,8 +35,8 @@ def parse_date(date) -> str:
     for format in (
         "%Y-%m-%d",
         "%Y/%m/%d",
-        "%d-%m-%Y",
-        "%d/%m/%Y"
+        "%m-%d-%Y",
+        "%m/%d/%Y"
         ):
 
         try:
@@ -115,6 +115,72 @@ def load_data():
         return {}
 
 
+# this is the star of the show... records expenditure(s) for a date
+def add_expense(data: dict):
+    
+    # first, input the date
+    try:
+        date_key_raw = input("Date (format YYYY/MM/DD or MM-DD-YYYY): ").strip()
+        # this expression parses the date using the function "parse_date"
+        date_key = parse_date(date_key_raw)
+    # ValueError guard if parsing fails
+    except ValueError as ex:
+        print(ex)
+        return
+
+    # input the name of the item
+    item = input("Name of item: ")
+    # guard if left as blank
+    if not item or item == "":
+        print("Item name can't be blank")
+        return
+    
+    # input the price. it will be converted into a float
+    price_string = input("The item's price: ")
+    price = float(price_string)
+    # guard if price not set
+    if not price_string or price_string == "":
+        print("Please input the price")
+        return
+    
+    # input how many of the item was purchased
+    quantity_string = input("How many?: ")
+    # the variable "quantity" is set to default at 1 below:
+    quantity = 1
+
+    # if user inputs a positive number, the
+    # default will be replaced with the input
+    if quantity_string >= 0:
+        quantity = int(quantity_string)
+    # guard in case user input is 0
+    else:
+        print("The quantity of the item can't be 0")
+        return
+
+    # notes about this item
+    notes = input("Any notes or reminders?: ")
+    if not notes or notes == "":
+        print("Blank note")
+        notes = None
+
+    # generate a unique identifier for this item
+    uuid = uuid.uuid4().hex
+
+
+    item_entry = {
+        "item": item,
+        "price": price,
+        "quantity": int(quantity),
+        "notes": notes,
+        "created_at": datetime.now().isoformat(),
+        "item_id": uuid
+    }
+
+    date_key = isodate(date_key)
+    data.setdefault(date_key, []).append(item_entry)
+    save_data(data)
+    print("New expenditure saved \n {quantity} Item {item} valued at {price}")
+
 
 # help command to bring up other available commands 
 
@@ -125,3 +191,17 @@ def show_commands():
           "\n'show m' - show month total"
           "\n'show d' - show day total"
     )
+
+
+def main_program():
+    print("Test phase \n type an available function")
+    print("'add' adds an expenditure for the record")
+
+    the_record_file = load_data()
+    typed_command = input("Input the keyword of the command: ")
+
+    if typed_command == "add":
+        add_expense(the_record_file)
+
+while True:
+    main_program()

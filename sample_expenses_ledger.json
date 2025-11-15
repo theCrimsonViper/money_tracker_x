@@ -5,6 +5,7 @@
         "price": 25,
         "quantity": 5,
         "notes": "notes",
+        "created_at": "2025-15-11",
         "item_id": "uuid"
         },
         {
@@ -12,16 +13,8 @@
         "price": 5,
         "quantity": 69,
         "notes": "notes",
+        "created_at": "2025-15-11",
         "item_id": "uuid"
-        },
-    ],
-    "2025-11-15": [
-        {
-        "item": "item_number_2",
-        "price": 6,
-        "quantity": 6,
-        "notes": "notes",
-        "item_id": "uuid"
-        }    
+        }
     ]
 }
