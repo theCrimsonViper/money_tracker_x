@@ -41,14 +41,14 @@ def parse_date(date) -> str:
 
         try:
             return datetime.strptime(date, format).date()
-        except:
+        except ValueError:
             continue
 
     # if input is just year and month
     for format2 in ("%Y-m", "%m-%Y", "%m/Y", "%Y/m"):
         try:
             return datetime.strptime(date, format2).date()
-        except:
+        except ValueError:
             continue
 
     # error if the program doesn't recognize the input date format
@@ -130,18 +130,20 @@ def add_expense(data: dict):
 
     # input the name of the item
     item = input("Name of item: ")
-    # guard if left as blank
     if not item or item == "":
-        print("Item name can't be blank")
-        return
+            print("Item name can't be blank")
+            return
     
     # input the price. it will be converted into a float
     price_string = input("The item's price: ")
     price = float(price_string)
-    # guard if price not set
-    if not price_string or price_string == "":
-        print("Please input the price")
-        return
+    try:
+        # guard if price not set
+        if not price_string or price_string == "":
+            print("Please input the price")
+            return
+    except ValueError:
+        print("Invalid price. Must be a number/integer.")
     
     # input how many of the item was purchased
     quantity_string = input("How many?: ")
@@ -150,12 +152,16 @@ def add_expense(data: dict):
 
     # if user inputs a positive number, the
     # default will be replaced with the input
-    if quantity_string >= 0:
-        quantity = int(quantity_string)
-    # guard in case user input is 0
-    else:
-        print("The quantity of the item can't be 0")
-        return
+    if quantity_string:
+        try:
+            quantity = int(quantity_string)
+            if quantity == 0:
+                print("Quantity can't be 0.")
+                return
+        except:
+            print("Invalid quantiy input. Defaulted to 1")
+            quantity = 1
+            return
 
     # notes about this item
     notes = input("Any notes or reminders?: ")
@@ -163,23 +169,19 @@ def add_expense(data: dict):
         print("Blank note")
         notes = None
 
-    # generate a unique identifier for this item
-    uuid = uuid.uuid4().hex
-
-
     item_entry = {
         "item": item,
         "price": price,
         "quantity": int(quantity),
         "notes": notes,
         "created_at": datetime.now().isoformat(),
-        "item_id": uuid
+        "item_id": uuid.uuid4().hex
     }
 
     date_key = isodate(date_key)
     data.setdefault(date_key, []).append(item_entry)
     save_data(data)
-    print("New expenditure saved \n {quantity} Item {item} valued at {price}")
+    print(f"New expenditure saved \n {quantity} Item {item} valued at {price}")
 
 
 # help command to bring up other available commands 
@@ -198,10 +200,13 @@ def main_program():
     print("'add' adds an expenditure for the record")
 
     the_record_file = load_data()
-    typed_command = input("Input the keyword of the command: ")
+    
 
-    if typed_command == "add":
-        add_expense(the_record_file)
+    while True:
+        typed_command = input("Input the keyword of the command: ").strip().lower()
+        if typed_command == "add":
+            add_expense(the_record_file)
+        else:
+            print("Please input a command")
 
-while True:
-    main_program()
+main_program()
