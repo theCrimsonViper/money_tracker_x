@@ -181,7 +181,22 @@ def add_expense(data: dict):
     date_key = isodate(date_key)
     data.setdefault(date_key, []).append(item_entry)
     save_data(data)
-    print(f"New expenditure saved \n {quantity} Item {item} valued at {price}")
+    print(f"New expenditure saved \n {quantity} x of '{item}' valued at {price}. Total: {price * quantity}")
+
+
+def add_gained():
+    gained_amount_string = input("Enter gained money amount: ")
+    if gained_amount_string:
+        try:
+            gained_amount = gained_amount_string
+        except ValueError as ex:
+            print(ex)
+    else:
+        print("Amount can't be blank.")
+        return
+
+def load_balance():
+    current_balance = {}
 
 
 # help command to bring up other available commands 
@@ -206,6 +221,8 @@ def main_program():
         typed_command = input("Input the keyword of the command: ").strip().lower()
         if typed_command == "add":
             add_expense(the_record_file)
+        elif typed_command == "gained":
+            add_gained()
         else:
             print("Please input a command")
 
