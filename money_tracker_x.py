@@ -102,8 +102,8 @@ def load_data():
             decoded_data[date_key] = []
             for copy in item_entry:
                 item_entry_copy = dict(copy)
-                decoded_data.append(item_entry_copy)
-                print("Log: load succesful")
+                decoded_data[date_key].append(item_entry_copy)
+        print("Log: load succesful")
 
     # returning the newly decoded data into Python objects
         return decoded_data
@@ -159,7 +159,7 @@ def add_expense(data: dict):
                 print("Quantity can't be 0.")
                 return
         except:
-            print("Invalid quantiy input. Defaulted to 1")
+            print("Invalid quantity input. Defaulted to 1")
             quantity = 1
             return
 
@@ -169,6 +169,8 @@ def add_expense(data: dict):
         print("Blank note")
         notes = None
 
+    # the "item_entry" variable is a dictionary converted from
+    # the JSON objects. Inside are key-pair values for each item
     item_entry = {
         "item": item,
         "price": price,
@@ -178,10 +180,58 @@ def add_expense(data: dict):
         "item_id": uuid.uuid4().hex
     }
 
-    date_key = isodate(date_key)
-    data.setdefault(date_key, []).append(item_entry)
-    save_data(data)
+    # after all inputs are done, we save the data
+    date_key = isodate(date_key) # converting date to ISO format
+    data.setdefault(date_key, []).append(item_entry) # adding the item entry for that date
+    save_data(data) # saving the data into the JSON file
     print(f"New expenditure saved \n {quantity} x of '{item}' valued at {price}. Total: {price * quantity}")
+
+
+# this functions shows all entries for a specific date along with the total expenditure for that date
+def show_day_total(raw_data: dict):
+
+    # first, input the date to be displayed
+    target_date_input = input("Input a date to be displayed: ").strip()
+
+    # this parses the daet using the function "parse_date"
+    # it's in a try-except block to incase there's a ValueError
+    # but there shouldn't be any since the input is controlled by the parse_date function
+    try:
+        target_date_parsed = parse_date(target_date_input)
+    except ValueError as error:
+        print(error)
+        return
+
+    # now we convert the parsed date into ISO format to match the keys in the JSON
+    target_key = isodate(target_date_parsed)
+
+    # now we retrieve the list of entries for that specific date
+    entries = raw_data.get(target_key, [])
+
+    # initializing "total" variable
+    total = float(0)
+    
+    # guard if there are no entries for that date
+    if not entries:
+        print(f"No entries found for {target_key}")
+        return
+    
+    # the magic for displaying each entry and calculating the total
+    print(f"Entries for {target_key}:")
+
+    # iterating through each entry for that date and assigning a number to each
+    for i, entry in enumerate(entries, start=1):
+        # calculating the line total for each entry
+        line_total = entry["price"] * entry.get("quantity", 1)
+        total += line_total
+        
+        # displaying the entry details from the JSON save file
+        print(f" {i}. [{entry['item']}. Item ID: {entry['item_id'][:8]}] {entry['quantity']}. Total: {float(entry['price'])} -> {float(line_total)}")
+        if entry.get("notes"):
+            print(f" Notes: {entry['notes']}")
+
+        # displays the total that was calculated earlier
+        print(f"Total for {target_key}: {float(line_total)}")
 
 
 def add_gained():
@@ -205,14 +255,16 @@ def show_commands():
     print("'add' - add expense"
           "\n'gained' - add gained"
           "\n'edit' - edit a record"
-          "\n'show m' - show month total"
           "\n'show d' - show day total"
+          "\n'show m' - show month total"
     )
 
 
 def main_program():
     print("Test phase \n type an available function")
-    print("'add' adds an expenditure for the record")
+    print("'add' adds an expenditure for the record"
+          "\n'show d' - show day total"
+          )
 
     the_record_file = load_data()
     
@@ -221,6 +273,8 @@ def main_program():
         typed_command = input("Input the keyword of the command: ").strip().lower()
         if typed_command == "add":
             add_expense(the_record_file)
+        elif typed_command == "show d":
+            show_day_total(the_record_file)
         elif typed_command == "gained":
             add_gained()
         else:
