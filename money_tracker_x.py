@@ -16,6 +16,7 @@ import json
 import csv
 
 LEDGER_FILE = Path.home() / "expenses_ledger.json"
+current_balance = 0
 
 # format the the date to ISO 8601
 
@@ -57,57 +58,72 @@ def parse_date(date) -> str:
 
 # saving the new data when either adding an expense or editing an expense
 def save_data(data):
-    
-    # this will set it up as a JSON object for saving it as a .json file
-    raw_data = {}
 
-    # let's attempt to encode the pairing of the date
-    # with it's corresponding entry in the JSON
+    global current_balance
+
+    # this catches the "save_data" parameter
+    # it checks if the argument is a dictionary with
+    # "entries" key, if so, it retrieves both entries and balance
+    if isinstance(data, dict) and "entries" in data:
+        entries = data.get("entries", {})
+        balance = data.get("balance", current_balance)
+    else:
+        entries = data or {}
+        balance = current_balance
+
+    raw_entries = {}
+
     try:
-        # each date is a key, and it's value will be an array of possible items
-        # entered on that specific date ## see "sample_expenses_ledger.json"
-        for date_key, item_entry in data.items():
-            raw_data[date_key] = []
-            for copy in item_entry:
-                item_entry_copy = dict(copy)
-                raw_data[date_key].append(item_entry_copy)
-                print("Log: save succesful")
-
-    # there might be a type error with the "for copy in item_entry" loop
+        for date_key, item_list in entries.items():
+            raw_entries[date_key] = []
+            # item_list should be an iterable of dict-like objects
+            for item in item_list:
+                item_entry_copy = dict(item)
+                raw_entries[date_key].append(item_entry_copy)
     except TypeError as ex:
-        print ("Error saving data:", ex)
+        print("Error saving data:", ex)
         return
 
-    # time to write everything into the JSON file
-    LEDGER_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf_8")
+    # update global balance and write file
+    current_balance = balance
+    ledger = {
+        "entries": raw_entries,
+        "balance": current_balance
+    }
+    LEDGER_FILE.write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf_8")
+    print("Log: save successful")
 
 
 # loads the saved data from the directory chosen by the "LEDGER_FILE" variable
 def load_data():
 
+    global current_balance
+
     # just incase this is the first time you're using this program
-    # this will generate the file initially
+    # this will generate the file initially with an 'entries' and 'balance' root
     if not LEDGER_FILE.exists():
-        raw_data = {}
-        LEDGER_FILE.write_text(json.dumps(raw_data, ensure_ascii=False, indent=2), encoding="utf_8")
+        LEDGER_FILE.write_text(json.dumps({"entries": {}, "balance": 0}, ensure_ascii=False, indent=2), encoding="utf_8")
 
     # let's attempt to decode the JSON file into Python
     try:
         raw_data = json.loads(LEDGER_FILE.read_text(encoding="utf_8"))
+        entries_raw = raw_data.get("entries", {})
         decoded_data = {}
 
         # each date is a key, and it's value will be an array of possible items
         # entered on that specific date ## see "sample_expenses_ledger.json"
-        for date_key, item_entry in raw_data.items():
+        for date_key, item_entry in entries_raw.items():
             decoded_data[date_key] = []
             for copy in item_entry:
                 item_entry_copy = dict(copy)
                 decoded_data[date_key].append(item_entry_copy)
-        print("Log: load succesful")
 
-    # returning the newly decoded data into Python objects
+        # load balance if present
+        current_balance = raw_data.get("balance", 0)
+        print("Log: load successful")
+
         return decoded_data
-    
+
     # just in case any kind of error occurs (such as corruption of the file)
     # this function will return an empty Python dictionary
     except Exception:
@@ -116,16 +132,16 @@ def load_data():
 
 
 # this is the star of the show... records expenditure(s) for a date
-def add_expense(data: dict):
-    
+def add_expense(data):
+    global current_balance
     # first, input the date
     try:
         date_key_raw = input("Date (format YYYY/MM/DD or MM-DD-YYYY): ").strip()
         # this expression parses the date using the function "parse_date"
         date_key = parse_date(date_key_raw)
     # ValueError guard if parsing fails
-    except ValueError as ex:
-        print(ex)
+    except ValueError as error:
+        print(error)
         return
 
     # input the name of the item
@@ -183,7 +199,13 @@ def add_expense(data: dict):
     # after all inputs are done, we save the data
     date_key = isodate(date_key) # converting date to ISO format
     data.setdefault(date_key, []).append(item_entry) # adding the item entry for that date
-    save_data(data) # saving the data into the JSON file
+
+    ledger = {
+        "entries": data,
+        "balance": current_balance - (price * quantity)
+    }
+
+    save_data(ledger) # saving the data into the JSON file
     print(f"New expenditure saved \n {quantity} x of '{item}' valued at {price}. Total: {price * quantity}")
 
 
@@ -221,40 +243,70 @@ def show_day_total(raw_data: dict):
 
     # iterating through each entry for that date and assigning a number to each
     for i, entry in enumerate(entries, start=1):
+
         # calculating the line total for each entry
-        line_total = entry["price"] * entry.get("quantity", 1)
+        line_total = entry.get("price") * entry.get("quantity")
         total += line_total
         
         # displaying the entry details from the JSON save file
-        print(f" {i}. [{entry['item']}. Item ID: {entry['item_id'][:8]}] {entry['quantity']}. Total: {float(entry['price'])} -> {float(line_total)}")
+        print(f" {i}. [{entry['item']}. Price: {float(entry['price'])}]. Item ID: {entry['item_id'][:8]}. {entry['quantity']}. Total: {float(entry['price']) * float(entry['quantity'])}")
         if entry.get("notes"):
             print(f" Notes: {entry['notes']}")
+        
+    # displays the total that was calculated earlier
+    print(f"Total for {target_key}: {total}")
 
-        # displays the total that was calculated earlier
-        print(f"Total for {target_key}: {float(line_total)}")
-
-
-def add_gained():
-    gained_amount_string = input("Enter gained money amount: ")
-    if gained_amount_string:
-        try:
-            gained_amount = gained_amount_string
-        except ValueError as ex:
-            print(ex)
-    else:
-        print("Amount can't be blank.")
-        return
 
 def load_balance():
-    current_balance = {}
+    global current_balance
+    try:
+        raw = json.loads(LEDGER_FILE.read_text(encoding="utf_8"))
+        current_balance = raw.get("balance", 0)
+        print("Load balance successful")
+    except:
+        print("Unable to get current balance")
+
+def save_balance(bal):
+    global current_balance
+    # set current_balance and write it while preserving entries
+    current_balance = bal
+    try:
+        raw = json.loads(LEDGER_FILE.read_text(encoding="utf_8"))
+    except Exception:
+        raw = {}
+    entries = raw.get("entries", {})
+    ledger = {"entries": entries, "balance": current_balance}
+    LEDGER_FILE.write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf_8")
+
+def add_gained():
+    global current_balance
+    gained_amount_string = input("Enter gained money amount: ").strip()
+    if not gained_amount_string:
+        print("Amount can't be blank.")
+        return
+    try:
+        gained_amount = float(gained_amount_string)
+    except ValueError as ex:
+        print("Invalid amount. Must be a number.")
+        return
+
+    current_balance += gained_amount
+    save_balance(current_balance)
+    print(f"Gained {gained_amount}. New balance: {current_balance}")
+
+def check_balance():
+    global current_balance
+    # raw_data no longer includes balance; use global current_balance
+    print(f"Current balance: {current_balance}")
 
 
 # help command to bring up other available commands 
 
 def show_commands():
     print("'add' - add expense"
-          "\n'gained' - add gained"
           "\n'edit' - edit a record"
+          "\n'gain' - add gained"
+          "\n'bal' - shows balance"
           "\n'show d' - show day total"
           "\n'show m' - show month total"
     )
@@ -264,9 +316,12 @@ def main_program():
     print("Test phase \n type an available function")
     print("'add' adds an expenditure for the record"
           "\n'show d' - show day total"
+          "\n'gain' - add gained"
+          "\n'bal' - shows balance"
           )
 
     the_record_file = load_data()
+    load_balance()
     
 
     while True:
@@ -275,8 +330,10 @@ def main_program():
             add_expense(the_record_file)
         elif typed_command == "show d":
             show_day_total(the_record_file)
-        elif typed_command == "gained":
+        elif typed_command == "gain":
             add_gained()
+        elif typed_command == "bal":
+            check_balance()
         else:
             print("Please input a command")
 
